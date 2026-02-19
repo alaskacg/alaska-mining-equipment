@@ -198,8 +198,8 @@ const AnchoragePostListing = () => {
           contact_name: contactName.trim(),
           contact_email: contactEmail.trim(),
           contact_phone: contactPhone.trim() || null,
-          status: 'active',
-          payment_status: 'completed',
+          status: 'pending_payment',
+          payment_status: 'pending',
           expires_at: expiresAt.toISOString(),
         }])
         .select()
@@ -224,8 +224,21 @@ const AnchoragePostListing = () => {
         });
       }
 
-      toast({ title: "🎉 Listing Created!", description: "Your listing is now live and visible to buyers!" });
-      navigate('/anchorage/my-listings');
+      // Store listing ID for post-payment activation
+      localStorage.setItem('pending_listing_id', listing.id);
+
+      // Redirect to Stripe Checkout
+      const { loadStripe } = await import('@stripe/stripe-js');
+      const stripe = await loadStripe('pk_live_51Sa49S2OuXdsEk61uiFJYFAwecGziydOVZHFAdxQaEtVoUPD17bi9P58E8KD3pU1OHByS2YA4sVCBb5Nu8KFdo9H00YrgzjniG');
+      if (stripe) {
+        await stripe.redirectToCheckout({
+          lineItems: [{ price: 'price_1T2L7K2OuXdsEk61B2khAo0m', quantity: 1 }],
+          mode: 'payment',
+          successUrl: `${window.location.origin}/listing-success?listing_id=${listing.id}`,
+          cancelUrl: `${window.location.origin}/listing-cancel?listing_id=${listing.id}`,
+        });
+      }
+      return;
     } catch (error) {
       console.error('Error creating listing:', error);
       toast({ title: "Error", description: "Failed to create listing. Please try again.", variant: "destructive" });
@@ -257,7 +270,7 @@ const AnchoragePostListing = () => {
               Post Your Anchorage Listing
             </h1>
             <p className="text-muted-foreground text-sm">
-              Free listing! Active for 60 days.
+              $10 listing — active for 60 days
             </p>
           </motion.div>
 
@@ -292,7 +305,7 @@ const AnchoragePostListing = () => {
                   <Gift className="w-6 h-6 text-accent" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-foreground text-sm">Free Listing</h3>
+                  <h3 className="font-semibold text-foreground text-sm">$10 Listing</h3>
                   <p className="text-xs text-muted-foreground">60 days • Up to 5 images</p>
                 </div>
               </div>
@@ -503,7 +516,7 @@ const AnchoragePostListing = () => {
                 ) : (
                   <>
                     <Sparkles className="w-4 h-4 mr-2" />
-                    Submit Listing
+                    Pay & Publish — $10
                   </>
                 )}
               </Button>
